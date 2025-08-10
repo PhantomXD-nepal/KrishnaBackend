@@ -7,12 +7,12 @@ from app.models import User
 from jose import JWTError, jwt
 from app.config import settings
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_ip
+from slowapi.util import get_ipaddr
 from slowapi.errors import RateLimitExceeded
 
 Base.metadata.create_all(bind=engine)
 
-limiter = Limiter(key_func=get_ip, default_limits=["5/minute"])
+limiter = Limiter(key_func=get_ipaddr, default_limits=["5/minute"])
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

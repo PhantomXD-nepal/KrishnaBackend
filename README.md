@@ -10,3 +10,6 @@ Will write soon!
     *   Configure rate limiting in the main application file (`main.py`). (Done)
     *   Apply the rate limiter to all routes. (Done)
 5.  **Fix Settings Validation:** Updated `app/config.py` to resolve `pydantic` validation errors by aligning `Settings` class fields with expected environment variables. (Done)
+6.  **Switch to SQLite and Remove SMS:**
+    *   Modified `app/config.py` to use SQLite and remove `SPARROW_SMS_API_TOKEN`. (Done)
+    *   Generated and applied new Alembic migration. (Done)
