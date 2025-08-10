@@ -13,18 +13,18 @@ auth_router = APIRouter()
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 s = URLSafeTimedSerializer(SECRET_KEY)
 
 conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_USERNAME,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
+    MAIL_USERNAME=settings.EMAIL_USERNAME,
+    MAIL_PASSWORD=settings.EMAIL_PASSWORD,
+    MAIL_FROM=settings.EMAIL_FROM,
+    MAIL_PORT=settings.EMAIL_PORT,
+    MAIL_SERVER=settings.EMAIL_HOST,
     MAIL_STARTTLS=False,
     MAIL_SSL_TLS=True,
     USE_CREDENTIALS=True,
