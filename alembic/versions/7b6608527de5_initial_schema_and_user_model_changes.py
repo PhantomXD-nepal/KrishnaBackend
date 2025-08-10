@@ -1,8 +1,8 @@
-"""Remove SMS API token setting and switch to SQLite
+"""Initial schema and user model changes
 
-Revision ID: be428a7c7f7e
-Revises: e9a32d72b149
-Create Date: 2025-08-10 10:27:47.616573
+Revision ID: 7b6608527de5
+Revises: 
+Create Date: 2025-08-10 11:10:21.123614
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'be428a7c7f7e'
-down_revision: Union[str, Sequence[str], None] = 'e9a32d72b149'
+revision: str = '7b6608527de5'
+down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,11 +1,12 @@
-from sqlalchemy import Boolean, Column, Integer, String, Float, DateTime, ForeignKey, Enum, Date
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from __future__ import annotations
+from sqlalchemy import Boolean, Column, Integer, String, Float, DateTime, ForeignKey, Enum, Date, Table
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from passlib.context import CryptContext
 from datetime import datetime
 import enum
-
-Base = declarative_base()
+from fastapi_users.db import SQLAlchemyBaseUserTable
+from typing import List, Optional
+from app.database import Base # Import Base from app.database
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -13,22 +14,42 @@ class Role(enum.Enum):
     admin = "admin"
     teacher = "teacher"
     parent = "parent"
+    student = "student"
 
-class User(Base):
-    __tablename__ = "users"
+class Transaction(Base): # Moved Transaction class here
+    __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String)
-    email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
-    role = Column(Enum(Role))
-    phone_number = Column(String)
+    name = Column(String)
+    price = Column(Float)
+    category = Column(String)
+    notes = Column(String, nullable=True)
+    date_created = Column(DateTime, default=datetime.now)
+    owner_id = Column(Integer, ForeignKey("users.id"))
 
-    def verify_password(self, password: str) -> bool:
-        return pwd_context.verify(password, self.password_hash)
+    user = relationship("User", back_populates="transactions")
 
-    def set_password(self, password: str):
-        self.password_hash = pwd_context.hash(password)
+class User(SQLAlchemyBaseUserTable["User"], Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(1024), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_staff: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    role = Column(Enum(Role), default=Role.parent, nullable=False) # Changed to use Enum and default to parent
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    # Relationships
+    transactions: Mapped[List["Transaction"]] = relationship("Transaction", back_populates="user")
+    school_info: Mapped[Optional["SchoolInfo"]] = relationship("SchoolInfo", back_populates="user", uselist=False)
+    school_events: Mapped[List["SchoolEvent"]] = relationship("SchoolEvent", back_populates="creator")
+    student: Mapped[Optional["Student"]] = relationship("Student", back_populates="user", uselist=False) # Added student relationship
+
 
 class Student(Base):
     __tablename__ = "students"
@@ -39,11 +60,11 @@ class Student(Base):
     date_of_birth = Column(Date)
     class_id = Column(Integer, ForeignKey("school_classes.id"))
     roll_number = Column(String)
-    parent_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True) # Changed from parent_id to user_id
     admission_date = Column(Date)
 
     school_class = relationship("SchoolClass", back_populates="students")
-    parent = relationship("User")
+    user = relationship("User", back_populates="student") # Changed from parent to user
 
 class SchoolClass(Base):
     __tablename__ = "school_classes"
@@ -55,6 +76,7 @@ class SchoolClass(Base):
 
     students = relationship("Student", back_populates="school_class")
     teacher = relationship("User")
+    subjects = relationship("Subject", secondary=class_subject_association, back_populates="classes")
 
 class Attendance(Base):
     __tablename__ = "attendances"
@@ -90,7 +112,7 @@ class SchoolEvent(Base):
     date = Column(Date)
     created_by = Column(Integer, ForeignKey("users.id"))
 
-    creator = relationship("User")
+    creator = relationship("User", back_populates="school_events")
 
 class SchoolInfo(Base):
     __tablename__ = "school_info"
@@ -102,6 +124,9 @@ class SchoolInfo(Base):
     email = Column(String)
     academic_year = Column(String)
     principal_name = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True) # Added foreign key to users
+
+    user = relationship("User", back_populates="school_info") # Added relationship
 
 class SchoolTransaction(Base):
     __tablename__ = "school_transactions"
@@ -127,3 +152,19 @@ class Announcement(Base):
     audience = Column(String) # all/teachers/parents
 
     creator = relationship("User")
+
+# Association table for SchoolClass and Subject
+class_subject_association = Table(
+    "class_subject_association",
+    Base.metadata,
+    Column("class_id", Integer, ForeignKey("school_classes.id"), primary_key=True),
+    Column("subject_id", Integer, ForeignKey("subjects.id"), primary_key=True)
+)
+
+class Subject(Base):
+    __tablename__ = "subjects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
+    classes = relationship("SchoolClass", secondary=class_subject_association, back_populates="subjects")

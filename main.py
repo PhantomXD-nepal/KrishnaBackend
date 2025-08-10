@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from app.routes import auth_router
 from app.transactions import transaction_router
+from app.api_routes import api_router # Import api_router
 from app.database import engine, Base
 from app.models import User
 from jose import JWTError, jwt
@@ -34,3 +35,4 @@ async def auth_middleware(request: Request, call_next):
 
 app.include_router(auth_router)
 app.include_router(transaction_router)
+app.include_router(api_router) # Include api_router
