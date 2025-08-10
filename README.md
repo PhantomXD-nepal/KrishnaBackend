@@ -9,3 +9,4 @@ Will write soon!
     *   Install the `slowapi` library. (Done)
     *   Configure rate limiting in the main application file (`main.py`). (Done)
     *   Apply the rate limiter to all routes. (Done)
+5.  **Fix Settings Validation:** Updated `app/config.py` to resolve `pydantic` validation errors by aligning `Settings` class fields with expected environment variables. (Done)
