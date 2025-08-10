@@ -6,10 +6,16 @@ from app.database import engine, Base
 from app.models import User
 from jose import JWTError, jwt
 from app.config import settings
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_ip
+from slowapi.errors import RateLimitExceeded
 
 Base.metadata.create_all(bind=engine)
 
+limiter = Limiter(key_func=get_ip, default_limits=["5/minute"])
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
