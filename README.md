@@ -7,9 +7,6 @@ All data communication follows a simple rule:
 Each value starts with a **prefix character** denoting its type, and ends with `\r\n`.
 
 ---
-
-## 📘 Supported Data Types
-
 | Data Type                    | Prefix | Structure                               | Example                                                 |                                       |
 | ---------------------------- | ------ | --------------------------------------- | ------------------------------------------------------- | ------------------------------------- |
 | **Simple String**            | `+`    | `+{string data}\r\n`                    | `+this is a simple string\r\n`                          |                                       |
@@ -19,7 +16,8 @@ Each value starts with a **prefix character** denoting its type, and ends with `
 | **Array**                    | `*`    | `*{count}\r\n{elements}\r\n`            | `*3\r\n+a simple string\r\n:12345\r\n$7\r\ntesting\r\n` |                                       |
 | **Dictionary (Hash/Object)** | `%`    | `%{key_count}\r\n{key/value pairs}\r\n` | `%2\r\n+name\r\n+KrishnaDB\r\n+version\r\n:1\r\n`       |                                       |
 | **NULL**                     | `$`    | `$-1\r\n`                               | `$-1\r\n`                                               |                                       |
-| **Boolean**                  | `#`    | `#{t`                                   | `f}`\r\n`                                                 | `#t\r\n` → `True`, `#f\r\n` → `False` |
+| **Boolean**                  | `#`    | `#{t`                                    | `f}\r\n`                                                 | `#t\r\n` → `True`, `#f\r\n` → `False` |
+
 
 ---
 
