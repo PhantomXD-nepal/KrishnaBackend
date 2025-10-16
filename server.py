@@ -3,18 +3,14 @@ from gevent.pool import Pool
 from gevent.server import StreamServer
 from Errors import CommandError, DisconnectError, Error
 from protocolHandler import ProtocolHandler
-import time
 from storage import Storage
 import atexit
+import json
 
 class Server:
     def __init__(self, host='127.0.0.1', port=6666, max_clients=64):
         self._pool = Pool(max_clients)
-        self._server = StreamServer(
-            (host, port),
-            self.conn_handler,
-            spawn=self._pool
-        )
+        self._server = StreamServer((host, port), self.conn_handler, spawn=self._pool)
         self._protocol_handler = ProtocolHandler()
         self._storage_handler = Storage()
         self._kv = self._storage_handler.load_data()
@@ -61,7 +57,7 @@ class Server:
             'FLUSH': self.flush,
             'MGET': self.mget,
             'MSET': self.mset,
-            'EDIT':self.edit
+            'EDIT': self.edit
         }
 
     def get_response(self, request):
@@ -81,19 +77,37 @@ class Server:
 
     # ----- Commands -----
     def ping(self):
-        start = time.time()
-        end = time.time()
-        latency_ms = (end - start) * 1000
-        return f"PONG latency: {latency_ms:.2f} ms"
-
+        return "PONG"
 
     def get(self, key):
-        return self._kv.get(key)
+        """Return both type and value."""
+        value = self._kv.get(key)
+        if value is None:
+            return f"(nil)"
+        return f"{type(value).__name__}: {value}"
 
     def set(self, key, *value_parts):
-        value = " ".join(value_parts)
+        value_str = " ".join(value_parts)
+
+        # 🔍 Type detection
+        if value_str.lower() in ["true", "false"]:
+            value = value_str.lower() == "true"
+        elif value_str.isdigit():
+            value = int(value_str)
+        else:
+            try:
+                value = float(value_str)
+            except ValueError:
+                value = value_str
+
+        if (value_str.startswith("{") and value_str.endswith("}")) or (value_str.startswith("[") and value_str.endswith("]")):
+            try:
+                value = json.loads(value_str)
+            except json.JSONDecodeError:
+                value = value_str  # fallback if invalid JSON
+
         self._kv[key] = value
-        return "OK"
+        return f"OK (stored as {type(value).__name__})"
 
     def delete(self, key):
         if key in self._kv:
@@ -107,30 +121,28 @@ class Server:
         return f"OK - deleted {kvlen} keys"
 
     def mget(self, *keys):
-        return [self._kv.get(key) for key in keys]
+        """Return list of (type: value) pairs."""
+        return [f"{type(v).__name__}: {v}" if v is not None else "(nil)" for v in [self._kv.get(k) for k in keys]]
 
     def mset(self, *items):
         data = list(zip(items[::2], items[1::2]))
         for key, value in data:
+            # store as string since MSET uses raw arguments
             self._kv[key] = value
         return f"OK {len(data)} items set"
 
-    def edit(self,key,*value_parts):
+    def edit(self, key, *value_parts):
         if key not in self._kv:
             return f"Key '{key}' not found."
-        if key in self._kv:
-            value = " ".join(value_parts)
-            old_value = self._kv[key]
-            self._kv[key] = value
-            return f"OK - updated key '{key}' (old value: '{old_value}', new value: '{value}')"
-        else:
-            return f"Key '{key}' not found."
+        value_str = " ".join(value_parts)
+        old_value = self._kv[key]
+        new_value = value_str
+        self._kv[key] = new_value
+        return f"OK - updated '{key}' ({type(old_value).__name__}→{type(new_value).__name__})"
 
     def run(self):
         print("🚀 KrishnaDB Server started on 127.0.0.1:6666")
         self._server.serve_forever()
-
-
 
 
 if __name__ == "__main__":

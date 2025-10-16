@@ -6,4 +6,5 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "gevent>=25.9.1",
+    "watchdog>=6.0.0",
 ]
