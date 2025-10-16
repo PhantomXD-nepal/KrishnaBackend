@@ -1,130 +1,101 @@
+
+
 # KrishnaDB Protocol Documentation
 
-KrishnaDB is a lightweight key-value store with a custom protocol inspired by Redis. This document describes how clients and servers communicate using different data types.
+KrishnaDB is a lightweight key-value store with a **Redis-inspired binary-safe protocol**.
+All data communication follows a simple rule:
+Each value starts with a **prefix character** denoting its type, and ends with `\r\n`.
 
 ---
 
-## Protocol Overview
+## 📘 Supported Data Types
 
-Each message sent to or received from the server begins with a **prefix character** that identifies the data type. The message is terminated by `\r\n`.
-
-The supported data types and their formats are summarized below.
-
-| Data Type         | Prefix | Structure                                           | Example |
-|------------------|--------|----------------------------------------------------|----------|
-| **Simple string** | `+`    | `+{string data}\r\n`                               | `+this is a simple string\r\n` |
-| **Error**         | `-`    | `-{error message}\r\n`                             | `-ERR unknown command "FLUHS"\r\n` |
-| **Integer**       | `:`    | `:{number}\r\n`                                    | `:1337\r\n` |
-| **Binary / Bulk string** | `$` | `${number of bytes}\r\n{data}\r\n`              | `$6\r\nfoobar\r\n` |
-| **Array**         | `*`    | `*{number of elements}\r\n{elements}\r\n`         | `*3\r\n+a simple string element\r\n:12345\r\n$7\r\ntesting\r\n` |
-| **Dictionary**    | `%`    | `%{number of keys}\r\n{key/value pairs}\r\n`      | `%3\r\n+key1\r\n+value1\r\n+key2\r\n*2\r\n+value2-0\r\n+value2-1\r\n:3\r\n$7\r\ntesting\r\n` |
-| **NULL**          | `$`    | `$-1\r\n` (represents null string)                 | `$-1\r\n` |
+| Data Type                    | Prefix | Structure                               | Example                                                 |                                       |
+| ---------------------------- | ------ | --------------------------------------- | ------------------------------------------------------- | ------------------------------------- |
+| **Simple String**            | `+`    | `+{string data}\r\n`                    | `+this is a simple string\r\n`                          |                                       |
+| **Error**                    | `-`    | `-{error message}\r\n`                  | `-ERR unknown command "FLUHS"\r\n`                      |                                       |
+| **Integer**                  | `:`    | `:{number}\r\n`                         | `:1337\r\n`                                             |                                       |
+| **Binary / Bulk String**     | `$`    | `${length}\r\n{data}\r\n`               | `$6\r\nfoobar\r\n`                                      |                                       |
+| **Array**                    | `*`    | `*{count}\r\n{elements}\r\n`            | `*3\r\n+a simple string\r\n:12345\r\n$7\r\ntesting\r\n` |                                       |
+| **Dictionary (Hash/Object)** | `%`    | `%{key_count}\r\n{key/value pairs}\r\n` | `%2\r\n+name\r\n+KrishnaDB\r\n+version\r\n:1\r\n`       |                                       |
+| **NULL**                     | `$`    | `$-1\r\n`                               | `$-1\r\n`                                               |                                       |
+| **Boolean**                  | `#`    | `#{t`                                   | `f}`\r\n`                                                 | `#t\r\n` → `True`, `#f\r\n` → `False` |
 
 ---
 
-## Details
+## 🔢 Boolean Type
 
-### 1. Simple String (`+`)
-- Used to send plain text messages.
-- Does not support newlines in the message.
-- **Example:**
-```text
-+OK\r\n
+The **Boolean** data type (`#`) is used for representing `True` and `False` values.
 
-2. Error (-)
+| Value | Raw Protocol | Python Equivalent |
+| ----- | ------------ | ----------------- |
+| True  | `#t\r\n`     | `True`            |
+| False | `#f\r\n`     | `False`           |
 
-Indicates a command or protocol error.
+**Example Interaction:**
 
-Clients should handle errors appropriately.
+```
+Client → $3\r\nSET\r\n+flag\r\n#t\r\n
+Server → +OK (stored as bool)\r\n
 
-Example:
+Client → $3\r\nGET\r\n+flag\r\n
+Server → #t\r\n
+```
 
--ERR unknown command "FLUHS"\r\n
+---
 
-3. Integer (:)
+## ⚡ Performance Metrics and Testing
 
-Represents numeric values.
+KrishnaDB supports **latency and throughput testing** directly from the client using built-in diagnostic commands.
 
-Example:
+### 🔹 `PING`
 
-:1337\r\n
+Measures **round-trip latency** between client and server.
 
-4. Binary / Bulk String ($)
+```bash
+krishnadb> PING
+-> PONG (Latency: 0.32ms)
+```
 
-Used for strings that may contain spaces or special characters.
+---
 
-Includes the length of the string in bytes.
+### 🔹 `TEST {size_in_kb}`
 
-Example:
+Generates and inserts random test data of the specified size to measure **insertion latency** and **storage throughput**.
 
-$6\r\nfoobar\r\n
+#### Example:
 
-5. Array (*)
+```bash
+krishnadb> TESTINSERT <testname> <size_in_kb>
+-> OK - inserted 10 KB of random data (Latency: 4.7 ms)
+```
 
-Represents a list of elements.
+#### Output metrics:
 
-Elements can be any of the supported data types (strings, integers, arrays, etc.).
+* **Insertion Latency:** Time taken to store the generated data.
+* **Data Size:** Approximate payload in kilobytes.
+* **Throughput:** Data written per second (calculated as size ÷ latency).
 
-Example:
+---
 
-*3\r\n+a simple string element\r\n:12345\r\n$7\r\ntesting\r\n
+### 🔹 `METRICS`
 
-6. Dictionary (%)
+Displays cumulative statistics of recent operations.
 
-Represents key-value pairs.
+### 🧪 Example Testing Session
 
-Keys and values can be any supported data type.
+```bash
+krishnadb> SET user {"name": "Krishna", "active": true, "role": "admin"}
+-> OK (stored as dict) (Latency: 4.75ms)
 
-Example:
+krishnadb> GET user
+-> dict: {'name': 'Krishna', 'active': True, 'role': 'admin'} (Latency: 0.31ms)
 
-%3\r\n+key1\r\n+value1\r\n+key2\r\n*2\r\n+value2-0\r\n+value2-1\r\n:3\r\n$7\r\ntesting\r\n
+krishnadb> TEST test1 512
+-> OK - inserted 512 KB of random data (Latency: 38.2ms)
 
-7. NULL ($-1)
+```
 
-Represents a null value.
+---
 
-Can be used for strings, arrays, or dictionaries.
-
-Example:
-
-$-1\r\n
-
-Notes
-
-All numeric lengths and counts are expressed as decimal numbers.
-
-Arrays and dictionaries are recursive, so elements may contain other arrays or dictionaries.
-
-Clients must always read the prefix byte first to determine the data type.
-
-Quick Start Example
-
-Here is how a client can send SET and GET commands using the KrishnaDB protocol.
-
-Example: SET a key
-Command:
-*3\r\n$3\r\nSET\r\n$8\r\nuser:123\r\n$23\r\n{"name":"Alice","age":25}\r\n
-
-Server Response:
-+OK\r\n
-
-Example: GET a key
-Command:
-*2\r\n$3\r\nGET\r\n$8\r\nuser:123\r\n
-
-Server Response:
-$23\r\n{"name":"Alice","age":25}\r\n
-
-Notes:
-
-Arrays (*) are used for commands with multiple arguments.
-
-Strings ($) indicate the length and the content.
-
-Responses follow the same prefix-based structure:
-
-+ for success messages
-
-$ for bulk string data
-
-- for errors
+Would you like me to generate the actual `TEST` and `METRICS` command implementation for your server next?
