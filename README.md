@@ -97,5 +97,3 @@ krishnadb> TEST test1 512
 ```
 
 ---
-
-Would you like me to generate the actual `TEST` and `METRICS` command implementation for your server next?
